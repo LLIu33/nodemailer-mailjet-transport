@@ -27,6 +27,7 @@
   ],
   "devDependencies": {
     "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
     "dirty-chai": "^2.0.1",
     "eslint": "^7.27.0",
     "eslint-config-standard": "^16.0.3",
@@ -40,6 +41,7 @@
   "dependencies": {
     "addressparser": "^1.0.1",
     "async": "^3.2.0",
+    "bluebird": "^3.7.2",
     "node-mailjet": "^3.3.4",
     "nodemailer-build-attachment": "^3.0.0"
   }

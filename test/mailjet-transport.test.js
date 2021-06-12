@@ -7,7 +7,8 @@ const mailjetTransport = require('../');
 const Message = require('../lib/message');
 const pkg = require('../package.json');
 const expect = chai.expect;
-
+chai.should();
+chai.use(require('chai-as-promised'));
 chai.use(dirtyChai);
 
 const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -81,52 +82,41 @@ describe('MailjetTransport', () => {
       mails = [mail];
     });
 
-    it('defaults', (done) => {
+    it('defaults', async () => {
       delete mail.data;
 
       const expected = new Message();
 
-      transport._parse(mails, (err, messages) => {
-        expect(err).to.not.exist();
-        expect(messages[0]).eql(expected);
-        done();
-      });
+      const messages = await transport._parse(mails);
+      expect(messages[0]).eql(expected);
     });
 
-    describe('to / from / cc / bcc / replyTo', () => {
-      const validator = (address, expected, fields, callback) => {
+    describe('to / from / cc / bcc / replyTo', async () => {
+      const validator = async (address, expected, fields) => {
         if (typeof fields === 'function') {
-          callback = fields;
           fields = ['from', 'to', 'cc', 'bcc', 'replyTo'];
         }
 
-        async.eachSeries(fields, (field, next) => {
+        const messages = await transport._parse(mails);
+        fields.map((field) => {
           mail.data[field] = address;
-
-          transport._parse(mails, (err, messages) => {
-            if (err) {
-              return next(err);
-            }
-
-            expect(messages[0][capitalize(field)]).equal(expected);
-            next();
-          });
-        }, callback);
+          return expect(messages[0][capitalize(field)]).equal(expected);
+        });
       };
 
-      it('should parse plain email address', (done) => {
+      it('should parse plain email address', () => {
         const address = 'foo@example.org';
         const expected = 'foo@example.org';
-        validator(address, expected, done);
+        validator(address, expected);
       });
 
-      it('should parse email address with formatted name', (done) => {
+      it('should parse email address with formatted name', () => {
         const address = '"John Doe" <john.doe@example.org>';
         const expected = '"John Doe" <john.doe@example.org>';
-        validator(address, expected, done);
+        validator(address, expected);
       });
 
-      it('should parse address object', (done) => {
+      it('should parse address object', () => {
         const address = {
           name: 'Jane Doe',
           address: 'jane.doe@example.org'
@@ -134,10 +124,10 @@ describe('MailjetTransport', () => {
 
         const expected = '"Jane Doe" <jane.doe@example.org>';
 
-        validator(address, expected, done);
+        validator(address, expected);
       });
 
-      it('should parse mixed address formats in to / cc / bcc fields', (done) => {
+      it('should parse mixed address formats in to / cc / bcc fields', () => {
         const address = [
           'foo@example.org',
           '"Bar Bar" bar@example.org',
@@ -156,10 +146,10 @@ describe('MailjetTransport', () => {
           '"Baz" <baz@example.org>'
         ].join(',');
 
-        validator(address, expected, ['to', 'cc', 'bcc'], done);
+        validator(address, expected, ['to', 'cc', 'bcc']);
       });
 
-      it('should parse first address in from field only', (done) => {
+      it('should parse first address in from field only', () => {
         const address = [
           'foo@example.org',
           '"Bar Bar" bar@example.org',
@@ -172,88 +162,70 @@ describe('MailjetTransport', () => {
 
         const expected = 'foo@example.org';
 
-        validator(address, expected, ['from'], done);
+        validator(address, expected, ['from']);
       });
     });
 
     describe('subject', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.subject = 'Subject';
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Subject).equal('Subject');
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Subject).equal('Subject');
       });
     });
 
     describe('text', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.text = 'Hello';
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TextBody).equal('Hello');
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].TextBody).equal('Hello');
       });
     });
 
     describe('html', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.html = '<h1>Hello</h1>';
-
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].HtmlBody).equal('<h1>Hello</h1>');
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].HtmlBody).equal('<h1>Hello</h1>');
       });
     });
 
     describe('headers', () => {
-      it('should parse {"X-Key-Name": "key value"}', (done) => {
+      it('should parse {"X-Key-Name": "key value"}', async () => {
         mail.data.headers = {
           'X-Key-Name': 'key value'
         };
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Headers).eql([
-            {
-              Name: 'X-Key-Name',
-              Value: 'key value'
-            }
-          ]);
-
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Headers).eql([
+          {
+            Name: 'X-Key-Name',
+            Value: 'key value'
+          }
+        ]);
       });
 
-      it('should parse [{key: "X-Key-Name", value: "key value"}]', (done) => {
+      it('should parse [{key: "X-Key-Name", value: "key value"}]', async () => {
         mail.data.headers = [
           {
             key: 'X-Key-Name',
             value: 'key value'
           }
         ];
-
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Headers).eql([
-            {
-              Name: 'X-Key-Name',
-              Value: 'key value'
-            }
-          ]);
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Headers).eql([
+          {
+            Name: 'X-Key-Name',
+            Value: 'key value'
+          }
+        ]);
       });
     });
 
     describe('headers (multiple)', () => {
-      it('should parse {"X-Key-Name": ["key value1", "key value2"]}', (done) => {
+      it('should parse {"X-Key-Name": ["key value1", "key value2"]}', async () => {
         mail.data.headers = {
           'X-Key-Name': [
             'key value1',
@@ -261,24 +233,20 @@ describe('MailjetTransport', () => {
           ]
         };
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Headers).eql([
-            {
-              Name: 'X-Key-Name',
-              Value: 'key value1'
-            },
-            {
-              Name: 'X-Key-Name',
-              Value: 'key value2'
-            }
-          ]);
-
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Headers).eql([
+          {
+            Name: 'X-Key-Name',
+            Value: 'key value1'
+          },
+          {
+            Name: 'X-Key-Name',
+            Value: 'key value2'
+          }
+        ]);
       });
 
-      it('should parse [{key: "X-Key-Name", value: "key value1"}, {key: "X-Key-Name", value: "key value2"}]', (done) => {
+      it('should parse [{key: "X-Key-Name", value: "key value1"}, {key: "X-Key-Name", value: "key value2"}]', async () => {
         mail.data.headers = [
           {
             key: 'X-Key-Name',
@@ -289,26 +257,22 @@ describe('MailjetTransport', () => {
             value: 'key value2'
           }
         ];
-
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Headers).eql([
-            {
-              Name: 'X-Key-Name',
-              Value: 'key value1'
-            },
-            {
-              Name: 'X-Key-Name',
-              Value: 'key value2'
-            }
-          ]);
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Headers).eql([
+          {
+            Name: 'X-Key-Name',
+            Value: 'key value1'
+          },
+          {
+            Name: 'X-Key-Name',
+            Value: 'key value2'
+          }
+        ]);
       });
     });
 
     describe('attachments', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         const names = ['text.txt', 'attachment-2.txt', 'attachment-3.txt'];
         const contents = ['TG9yZW0gaXBzdW0uLg==', 'aGVsbG8gd29ybGQ=', 'Zm9vIGJheiBiYXI='];
         const cid = ['', '', 'cid:text-01.txt'];
@@ -327,279 +291,246 @@ describe('MailjetTransport', () => {
           }
         ];
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          messages[0].Attachments.forEach((attachment, i) => {
-            expect(attachment.Name).equal(names[i]);
-            expect(attachment.Content.toString()).equal(contents[i]);
-            expect(attachment.ContentType).equal('text/plain');
-            expect(attachment.ContentID).equal(cid[i]);
-          });
-
-          done();
+        const messages = await transport._parse(mails);
+        messages[0].Attachments.forEach((attachment, i) => {
+          expect(attachment.Name).equal(names[i]);
+          expect(attachment.Content.toString()).equal(contents[i]);
+          expect(attachment.ContentType).equal('text/plain');
+          expect(attachment.ContentID).equal(cid[i]);
         });
       });
     });
 
     describe('tag', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.tag = 'quux';
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Tag).equal('quux');
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Tag).equal('quux');
       });
     });
 
     describe('metadata', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.metadata = { foo: 'bar' };
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].Metadata).eql({ foo: 'bar' });
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].Metadata).eql({ foo: 'bar' });
       });
     });
 
     describe('trackOpens', () => {
-      it('should be ignored', (done) => {
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TrackOpens).be.an('undefined');
-          done();
-        });
+      it('should be ignored', async () => {
+        const messages = await transport._parse(mails);
+        expect(messages[0].TrackOpens).be.an('undefined');
       });
 
-      it('should be parsed', (done) => {
-        const values = [true, false];
+      // it('should be parsed', async () => {
+      //   const values = [true, false];
 
-        function iteratee(value, cb) {
-          mail.data.trackOpens = value;
+      //   function iteratee(value, cb) {
+      //     mail.data.trackOpens = value;
 
-          transport._parse(mails, (err, messages) => {
-            if (err) { return cb(err); }
-            cb(null, messages[0]);
-          });
-        }
+      //     transport._parse(mails, (err, messages) => {
+      //       if (err) { return cb(err); }
+      //       cb(null, messages[0]);
+      //     });
+      //   }
 
-        async.mapSeries(values, iteratee, (err, results) => {
-          expect(err).to.not.exist();
+      //   async.mapSeries(values, iteratee, (err, results) => {
+      //     expect(err).to.not.exist();
 
-          results.forEach((actual, i) => {
-            expect(actual.TrackOpens).equal(values[i]);
-          });
-          done();
-        });
-      });
+      //     results.forEach((actual, i) => {
+      //       expect(actual.TrackOpens).equal(values[i]);
+      //     });
+      //     done();
+      //   });
+      // });
     });
 
     describe('trackLinks', () => {
-      it('should be ignored', (done) => {
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TrackLinks).be.an('undefined');
-          done();
-        });
+      it('should be ignored', async () => {
+        const messages = await transport._parse(mails);
+        expect(messages[0].TrackLinks).be.an('undefined');
       });
 
-      it('should return error', (done) => {
+      it('should return error', async () => {
         mail.data.trackLinks = 'foo';
 
-        transport._parse(mails, (err) => {
-          expect(err.message).equal('"foo" is wrong value for link tracking. Valid values are: None, HtmlAndText, HtmlOnly, TextOnly');
-          done();
-        });
+        await transport._parse(mails)
+          .should.be.rejectedWith('"foo" is wrong value for link tracking. Valid values are: None, HtmlAndText, HtmlOnly, TextOnly');
       });
 
-      it('should be parsed', (done) => {
-        const values = ['None', 'HtmlAndText', 'HtmlOnly', 'TextOnly'];
+      // it('should be parsed', async () => {
+      //   const values = ['None', 'HtmlAndText', 'HtmlOnly', 'TextOnly'];
 
-        function iteratee(value, cb) {
-          mail.data.trackLinks = value;
+      //   function iteratee(value, cb) {
+      //     mail.data.trackLinks = value;
 
-          transport._parse(mails, (err, messages) => {
-            if (err) { return cb(err); }
-            cb(null, messages[0]);
-          });
-        }
+      //     transport._parse(mails, (err, messages) => {
+      //       if (err) { return cb(err); }
+      //       cb(null, messages[0]);
+      //     });
+      //   }
 
-        async.mapSeries(values, iteratee, (err, results) => {
-          expect(err).to.not.exist();
+      //   async.mapSeries(values, iteratee, (err, results) => {
+      //     expect(err).to.not.exist();
 
-          results.forEach((actual, i) => {
-            expect(actual.TrackLinks).equal(values[i]);
-          });
-          done();
-        });
-      });
+      //     results.forEach((actual, i) => {
+      //       expect(actual.TrackLinks).equal(values[i]);
+      //     });
+      //     done();
+      //   });
+      // });
     });
 
     describe('template id', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.templateId = 'foo';
         mail.data.templateModel = { bar: 'baz' };
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TemplateId).eql('foo');
-          expect(messages[0].TemplateModel).eql({ bar: 'baz' });
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].TemplateId).eql('foo');
+        expect(messages[0].TemplateModel).eql({ bar: 'baz' });
       });
 
-      it('should be parsed (inline css)', (done) => {
+      it('should be parsed (inline css)', async () => {
         mail.data.templateId = 'foo';
         mail.data.templateModel = { bar: 'baz' };
         mail.data.inlineCss = true;
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TemplateId).equal('foo');
-          expect(messages[0].TemplateModel).eql({ bar: 'baz' });
-          expect(messages[0].InlineCss).equal(true);
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].TemplateId).equal('foo');
+        expect(messages[0].TemplateModel).eql({ bar: 'baz' });
+        expect(messages[0].InlineCss).equal(true);
       });
     });
 
     describe('template alias', () => {
-      it('should be parsed', (done) => {
+      it('should be parsed', async () => {
         mail.data.templateAlias = 'buzz';
         mail.data.templateModel = { bar: 'baz' };
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TemplateAlias).eql('buzz');
-          expect(messages[0].TemplateModel).eql({ bar: 'baz' });
-          done();
-        });
+        const messages = await transport._parse(mails);
+        expect(messages[0].TemplateAlias).eql('buzz');
+        expect(messages[0].TemplateModel).eql({ bar: 'baz' });
       });
 
-      it('should be parsed (inline css)', (done) => {
+      it('should be parsed (inline css)', async () => {
         mail.data.templateAlias = 'buzz';
         mail.data.templateModel = { bar: 'baz' };
         mail.data.inlineCss = true;
 
-        transport._parse(mails, (err, messages) => {
-          expect(err).to.not.exist();
-          expect(messages[0].TemplateAlias).equal('buzz');
-          expect(messages[0].TemplateModel).eql({ bar: 'baz' });
-          expect(messages[0].InlineCss).equal(true);
-          done();
-        });
-      });
-    });
-  });
-
-  describe('#send', () => {
-    it('should be able to send a single mail (callback)', (done) => {
-      transport.send(mails[0], (err, info) => {
-        expect(err).to.not.exist();
-        expect(info).be.an('object');
-
-        const accepted = info.accepted;
-
-        expect(accepted[0].To).equal('jane@example.org');
-        expect(accepted[0].MessageID).be.a('string');
-        expect(accepted[0].SubmittedAt).be.a('string');
-        expect(accepted[0].ErrorCode).equal(0);
-        expect(accepted[0].Message).equal('Test job accepted');
-
-        done();
-      });
-    });
-
-    it('should be able to send a single mail (promise)', (done) => {
-      transport.send(mails[0]).then((info) => {
-        expect(info).be.an('object');
-
-        const accepted = info.accepted;
-
-        expect(accepted[0].To).equal('jane@example.org');
-        expect(accepted[0].MessageID).be.a('string');
-        expect(accepted[0].SubmittedAt).be.a('string');
-        expect(accepted[0].ErrorCode).equal(0);
-        expect(accepted[0].Message).equal('Test job accepted');
-
-        done();
-      });
-    });
-
-    xit('should be able to send a single mail with template', (done) => {
-      delete mails[0].data.subject;
-      delete mails[0].data.html;
-      delete mails[0].data.text;
-
-      mails[0].data.templateId = 0;
-      mails[0].data.templateModel = {
-        foo: 'bar'
-      };
-
-      transport.send(mails[0], function (err, info) {
-        expect(err).to.not.exist();
-        expect(info).be.an('object');
-
-        const accepted = info.accepted;
-
-        expect(accepted[0].To).equal('jane@example.org');
-        expect(accepted[0].MessageID).be.a('string');
-        expect(accepted[0].SubmittedAt).be.a('string');
-        expect(accepted[0].ErrorCode).equal(0);
-        expect(accepted[0].Message).equal('Test job accepted');
-
-        done();
-      });
-    });
-  });
-
-  describe('#sendBatch', () => {
-    it('should be able to send multiple mail (callback)', (done) => {
-      transport.sendBatch(mails, (err, info) => {
-        expect(err).to.not.exist();
-        expect(info).be.an('object');
-
-        const accepted = info.accepted;
-
-        expect(accepted[0].To).equal('jane@example.org');
-        expect(accepted[0].MessageID).be.a('string');
-        expect(accepted[0].SubmittedAt).be.a('string');
-        expect(accepted[0].ErrorCode).equal(0);
-        expect(accepted[0].Message).equal('Test job accepted');
-
-        expect(accepted[1].To).equal('john@example.org');
-        expect(accepted[1].MessageID).be.a('string');
-        expect(accepted[1].SubmittedAt).be.a('string');
-        expect(accepted[1].ErrorCode).equal(0);
-        expect(accepted[1].Message).equal('Test job accepted');
-
-        done();
-      });
-    });
-
-    it('should be able to send multiple mails (promise)', (done) => {
-      transport.sendBatch(mails).then((info) => {
-        expect(info).be.an('object');
-
-        const accepted = info.accepted;
-
-        expect(accepted[0].To).equal('jane@example.org');
-        expect(accepted[0].MessageID).be.a('string');
-        expect(accepted[0].SubmittedAt).be.a('string');
-        expect(accepted[0].ErrorCode).equal(0);
-        expect(accepted[0].Message).equal('Test job accepted');
-
-        expect(accepted[1].To).equal('john@example.org');
-        expect(accepted[1].MessageID).be.a('string');
-        expect(accepted[1].SubmittedAt).be.a('string');
-        expect(accepted[1].ErrorCode).equal(0);
-        expect(accepted[1].Message).equal('Test job accepted');
-
-        done();
+        const messages = await transport._parse(mails);
+        expect(messages[0].TemplateAlias).equal('buzz');
+        expect(messages[0].TemplateModel).eql({ bar: 'baz' });
+        expect(messages[0].InlineCss).equal(true);
       });
     });
   });
 });
+// });
+// describe('#send', () => {
+// it('should be able to send a single mail ()', async () => {
+//   const info = await transport.send(mails[0]);
+//   expect(info).be.an('object');
+//   console.log(info);
+//   const accepted = info.accepted;
+
+//   expect(accepted[0].To).equal('jane@example.org');
+//   expect(accepted[0].MessageID).be.a('string');
+//   expect(accepted[0].SubmittedAt).be.a('string');
+//   expect(accepted[0].ErrorCode).equal(0);
+//   expect(accepted[0].Message).equal('Test job accepted');
+// });
+
+// it('should be able to send a single mail (promise)', async () => {
+//   transport.send(mails[0]).then((info) => {
+//     expect(info).be.an('object');
+
+//     const accepted = info.accepted;
+
+//     expect(accepted[0].To).equal('jane@example.org');
+//     expect(accepted[0].MessageID).be.a('string');
+//     expect(accepted[0].SubmittedAt).be.a('string');
+//     expect(accepted[0].ErrorCode).equal(0);
+//     expect(accepted[0].Message).equal('Test job accepted');
+
+//     done();
+//   });
+// });
+
+// xit('should be able to send a single mail with template', async () => {
+//   delete mails[0].data.subject;
+//   delete mails[0].data.html;
+//   delete mails[0].data.text;
+
+//   mails[0].data.templateId = 0;
+//   mails[0].data.templateModel = {
+//     foo: 'bar'
+//   };
+
+//   transport.send(mails[0], function (err, info) {
+//     expect(err).to.not.exist();
+//     expect(info).be.an('object');
+
+//     const accepted = info.accepted;
+
+//     expect(accepted[0].To).equal('jane@example.org');
+//     expect(accepted[0].MessageID).be.a('string');
+//     expect(accepted[0].SubmittedAt).be.a('string');
+//     expect(accepted[0].ErrorCode).equal(0);
+//     expect(accepted[0].Message).equal('Test job accepted');
+
+//     done();
+//   });
+// });
+// });
+
+// describe('#sendBatch', () => {
+//   it('should be able to send multiple mail (callback)', async () => {
+//     transport.sendBatch(mails, (err, info) => {
+//       expect(err).to.not.exist();
+//       expect(info).be.an('object');
+
+//       const accepted = info.accepted;
+
+//       expect(accepted[0].To).equal('jane@example.org');
+//       expect(accepted[0].MessageID).be.a('string');
+//       expect(accepted[0].SubmittedAt).be.a('string');
+//       expect(accepted[0].ErrorCode).equal(0);
+//       expect(accepted[0].Message).equal('Test job accepted');
+
+//       expect(accepted[1].To).equal('john@example.org');
+//       expect(accepted[1].MessageID).be.a('string');
+//       expect(accepted[1].SubmittedAt).be.a('string');
+//       expect(accepted[1].ErrorCode).equal(0);
+//       expect(accepted[1].Message).equal('Test job accepted');
+
+//       done();
+//     });
+//   });
+
+//   it('should be able to send multiple mails (promise)', async () => {
+//     transport.sendBatch(mails).then((info) => {
+//       expect(info).be.an('object');
+
+//       const accepted = info.accepted;
+
+//       expect(accepted[0].To).equal('jane@example.org');
+//       expect(accepted[0].MessageID).be.a('string');
+//       expect(accepted[0].SubmittedAt).be.a('string');
+//       expect(accepted[0].ErrorCode).equal(0);
+//       expect(accepted[0].Message).equal('Test job accepted');
+
+//       expect(accepted[1].To).equal('john@example.org');
+//       expect(accepted[1].MessageID).be.a('string');
+//       expect(accepted[1].SubmittedAt).be.a('string');
+//       expect(accepted[1].ErrorCode).equal(0);
+//       expect(accepted[1].Message).equal('Test job accepted');
+
+//       done();
+//     });
+//   });
+// });
+// });
