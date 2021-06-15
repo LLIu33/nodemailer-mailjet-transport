@@ -1,6 +1,6 @@
 {
   "name": "nodemailer-mailjet-transport",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mailjet transport for Nodemailer",
   "main": "index.js",
   "scripts": {
