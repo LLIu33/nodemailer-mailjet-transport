@@ -1,0 +1,20 @@
+sudo: false
+language: node_js
+branches:
+  except:
+  - gh-pages
+node_js:
+  - '16'
+  - '15'
+  - '14'
+  - '13'
+  - '12'
+env:
+  - NODEMAILER_VERSION=^4.0.0
+  - NODEMAILER_VERSION=^5.0.0
+  - NODEMAILER_VERSION=^6.0.0
+script:
+  - npm run lint
+  - npm run test:travis
+after_success:
+  - npm run coveralls
