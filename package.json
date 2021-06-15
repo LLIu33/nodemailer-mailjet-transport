@@ -1,11 +1,12 @@
 {
   "name": "nodemailer-mailjet-transport",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Mailjet transport for Nodemailer",
   "main": "index.js",
   "scripts": {
     "eslint": "eslint lib test index.js --fix",
-    "lint": "npm run eslint",
+    "remark": "remark .",
+    "lint": "npm run eslint && npm run remark",
     "test": "mocha",
     "test:travis": "npm install && npm install nodemailer@$NODEMAILER_VERSION && npm test",
     "coverage": "nyc --reporter=html --reporter=text mocha",
@@ -34,6 +35,14 @@
       "lib/**/*.js"
     ]
   },
+  "remarkConfig": {
+    "plugins": [
+      "remark-preset-lint-recommended"
+    ]
+  },
+  "peerDependencies": {
+    "nodemailer": ">=4.x"
+  },
   "devDependencies": {
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
@@ -45,9 +54,12 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.1.0",
     "eslint-plugin-standard": "^5.0.0",
-    "mocha": "^8.4.0",
+    "mocha": "^9.0.0",
     "nodemailer": "^6.6.1",
-    "nyc": "^15.1.0"
+    "nyc": "^15.1.0",
+    "remark": "^13.0.0",
+    "remark-cli": "^9.0.0",
+    "remark-preset-lint-recommended": "^5.0.0"
   },
   "dependencies": {
     "addressparser": "^1.0.1",
