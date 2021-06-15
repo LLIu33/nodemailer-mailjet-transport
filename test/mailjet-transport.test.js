@@ -1,6 +1,5 @@
 'use strict';
 
-const async = require('async');
 const chai = require('chai');
 const dirtyChai = require('dirty-chai');
 const mailjetTransport = require('../');
@@ -10,6 +9,8 @@ const expect = chai.expect;
 chai.should();
 chai.use(require('chai-as-promised'));
 chai.use(dirtyChai);
+
+require('dotenv').config();
 
 const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -60,9 +61,10 @@ describe('MailjetTransport', () => {
 
     options = {
       auth: {
-        apiKey: 'MAILJET_API_TEST',
-        apiSecret: 'MAILJET_API_SECRET'
-      }
+        apiKey: process.env.MAILJET_API_TEST,
+        apiSecret: process.env.MAILJET_API_SECRET
+      },
+      SandboxMode: true
     };
 
     transport = mailjetTransport(options);
@@ -180,7 +182,7 @@ describe('MailjetTransport', () => {
         mail.data.text = 'Hello';
 
         const messages = await transport._parse(mails);
-        expect(messages[0].TextBody).equal('Hello');
+        expect(messages[0].TextPart).equal('Hello');
       });
     });
 
@@ -188,7 +190,7 @@ describe('MailjetTransport', () => {
       it('should be parsed', async () => {
         mail.data.html = '<h1>Hello</h1>';
         const messages = await transport._parse(mails);
-        expect(messages[0].HtmlBody).equal('<h1>Hello</h1>');
+        expect(messages[0].HtmlPart).equal('<h1>Hello</h1>');
       });
     });
 
@@ -199,12 +201,7 @@ describe('MailjetTransport', () => {
         };
 
         const messages = await transport._parse(mails);
-        expect(messages[0].Headers).eql([
-          {
-            Name: 'X-Key-Name',
-            Value: 'key value'
-          }
-        ]);
+        expect(messages[0].Headers).eql({ 'X-Key-Name': 'key value' });
       });
 
       it('should parse [{key: "X-Key-Name", value: "key value"}]', async () => {
@@ -215,17 +212,12 @@ describe('MailjetTransport', () => {
           }
         ];
         const messages = await transport._parse(mails);
-        expect(messages[0].Headers).eql([
-          {
-            Name: 'X-Key-Name',
-            Value: 'key value'
-          }
-        ]);
+        expect(messages[0].Headers).eql({ 'X-Key-Name': 'key value' });
       });
     });
 
     describe('headers (multiple)', () => {
-      it('should parse {"X-Key-Name": ["key value1", "key value2"]}', async () => {
+      xit('should parse {"X-Key-Name": ["key value1", "key value2"]}', async () => {
         mail.data.headers = {
           'X-Key-Name': [
             'key value1',
@@ -246,7 +238,7 @@ describe('MailjetTransport', () => {
         ]);
       });
 
-      it('should parse [{key: "X-Key-Name", value: "key value1"}, {key: "X-Key-Name", value: "key value2"}]', async () => {
+      xit('should parse [{key: "X-Key-Name", value: "key value1"}, {key: "X-Key-Name", value: "key value2"}]', async () => {
         mail.data.headers = [
           {
             key: 'X-Key-Name',
@@ -293,8 +285,8 @@ describe('MailjetTransport', () => {
 
         const messages = await transport._parse(mails);
         messages[0].Attachments.forEach((attachment, i) => {
-          expect(attachment.Name).equal(names[i]);
-          expect(attachment.Content.toString()).equal(contents[i]);
+          expect(attachment.Filename).equal(names[i]);
+          expect(attachment.Base64Content.toString()).equal(contents[i]);
           expect(attachment.ContentType).equal('text/plain');
           expect(attachment.ContentID).equal(cid[i]);
         });
@@ -325,27 +317,26 @@ describe('MailjetTransport', () => {
         expect(messages[0].TrackOpens).be.an('undefined');
       });
 
-      // it('should be parsed', async () => {
-      //   const values = [true, false];
+      xit('should be parsed', async () => {
+        const values = [true, false];
 
-      //   function iteratee(value, cb) {
-      //     mail.data.trackOpens = value;
+        function iteratee(value, cb) {
+          mail.data.trackOpens = value;
 
-      //     transport._parse(mails, (err, messages) => {
-      //       if (err) { return cb(err); }
-      //       cb(null, messages[0]);
-      //     });
-      //   }
+          transport._parse(mails, (err, messages) => {
+            if (err) { return cb(err); }
+            cb(null, messages[0]);
+          });
+        }
 
-      //   async.mapSeries(values, iteratee, (err, results) => {
-      //     expect(err).to.not.exist();
+        Promise.map(values, iteratee, (err, results) => {
+          expect(err).to.not.exist();
 
-      //     results.forEach((actual, i) => {
-      //       expect(actual.TrackOpens).equal(values[i]);
-      //     });
-      //     done();
-      //   });
-      // });
+          results.forEach((actual, i) => {
+            expect(actual.TrackOpens).equal(values[i]);
+          });
+        });
+      });
     });
 
     describe('trackLinks', () => {
@@ -361,27 +352,26 @@ describe('MailjetTransport', () => {
           .should.be.rejectedWith('"foo" is wrong value for link tracking. Valid values are: None, HtmlAndText, HtmlOnly, TextOnly');
       });
 
-      // it('should be parsed', async () => {
-      //   const values = ['None', 'HtmlAndText', 'HtmlOnly', 'TextOnly'];
+      xit('should be parsed', async () => {
+        const values = ['None', 'HtmlAndText', 'HtmlOnly', 'TextOnly'];
 
-      //   function iteratee(value, cb) {
-      //     mail.data.trackLinks = value;
+        function iteratee(value, cb) {
+          mail.data.trackLinks = value;
 
-      //     transport._parse(mails, (err, messages) => {
-      //       if (err) { return cb(err); }
-      //       cb(null, messages[0]);
-      //     });
-      //   }
+          transport._parse(mails, (err, messages) => {
+            if (err) { return cb(err); }
+            cb(null, messages[0]);
+          });
+        }
 
-      //   async.mapSeries(values, iteratee, (err, results) => {
-      //     expect(err).to.not.exist();
+        Promise.map(values, iteratee, (err, results) => {
+          expect(err).to.not.exist();
 
-      //     results.forEach((actual, i) => {
-      //       expect(actual.TrackLinks).equal(values[i]);
-      //     });
-      //     done();
-      //   });
-      // });
+          results.forEach((actual, i) => {
+            expect(actual.TrackLinks).equal(values[i]);
+          });
+        });
+      });
     });
 
     describe('template id', () => {
@@ -428,109 +418,53 @@ describe('MailjetTransport', () => {
       });
     });
   });
+
+  describe('#send', () => {
+    it('should be able to send a single mail ()', async () => {
+      const result = await transport.send(mails[0]);
+      const info = JSON.parse(result.response.text);
+      expect(info).be.an('object');
+      const accepted = info.Messages[0].To;
+
+      expect(accepted[0].Email).equal('jane@example.org');
+      expect(accepted[0].MessageID).be.a('number');
+      expect(accepted[0].MessageUUID).be.a('string');
+    });
+
+    xit('should be able to send a single mail with template', async () => {
+      delete mails[0].data.subject;
+      delete mails[0].data.html;
+      delete mails[0].data.text;
+
+      mails[0].data.templateId = 0;
+      mails[0].data.templateModel = {
+        foo: 'bar'
+      };
+
+      const result = await transport.send(mails[0]);
+      const info = JSON.parse(result.response.text);
+      expect(info).be.an('object');
+      const accepted = info.Messages[0].To;
+
+      expect(accepted[0].Email).equal('jane@example.org');
+      expect(accepted[0].MessageID).be.a('number');
+      expect(accepted[0].MessageUUID).be.a('string');
+    });
+  });
+
+  describe('#sendBatch', () => {
+    it('should be able to send multiple mail (callback)', async () => {
+      const result = await transport.sendBatch(mails);
+      const info = JSON.parse(result.response.text);
+      expect(info).be.an('object');
+
+      expect(info.Messages[0].To[0].Email).equal('jane@example.org');
+      expect(info.Messages[0].To[0].MessageID).be.a('number');
+      expect(info.Messages[0].To[0].MessageUUID).be.a('string');
+
+      expect(info.Messages[1].To[0].Email).equal('john@example.org');
+      expect(info.Messages[1].To[0].MessageID).be.a('number');
+      expect(info.Messages[1].To[0].MessageUUID).be.a('string');
+    });
+  });
 });
-// });
-// describe('#send', () => {
-// it('should be able to send a single mail ()', async () => {
-//   const info = await transport.send(mails[0]);
-//   expect(info).be.an('object');
-//   console.log(info);
-//   const accepted = info.accepted;
-
-//   expect(accepted[0].To).equal('jane@example.org');
-//   expect(accepted[0].MessageID).be.a('string');
-//   expect(accepted[0].SubmittedAt).be.a('string');
-//   expect(accepted[0].ErrorCode).equal(0);
-//   expect(accepted[0].Message).equal('Test job accepted');
-// });
-
-// it('should be able to send a single mail (promise)', async () => {
-//   transport.send(mails[0]).then((info) => {
-//     expect(info).be.an('object');
-
-//     const accepted = info.accepted;
-
-//     expect(accepted[0].To).equal('jane@example.org');
-//     expect(accepted[0].MessageID).be.a('string');
-//     expect(accepted[0].SubmittedAt).be.a('string');
-//     expect(accepted[0].ErrorCode).equal(0);
-//     expect(accepted[0].Message).equal('Test job accepted');
-
-//     done();
-//   });
-// });
-
-// xit('should be able to send a single mail with template', async () => {
-//   delete mails[0].data.subject;
-//   delete mails[0].data.html;
-//   delete mails[0].data.text;
-
-//   mails[0].data.templateId = 0;
-//   mails[0].data.templateModel = {
-//     foo: 'bar'
-//   };
-
-//   transport.send(mails[0], function (err, info) {
-//     expect(err).to.not.exist();
-//     expect(info).be.an('object');
-
-//     const accepted = info.accepted;
-
-//     expect(accepted[0].To).equal('jane@example.org');
-//     expect(accepted[0].MessageID).be.a('string');
-//     expect(accepted[0].SubmittedAt).be.a('string');
-//     expect(accepted[0].ErrorCode).equal(0);
-//     expect(accepted[0].Message).equal('Test job accepted');
-
-//     done();
-//   });
-// });
-// });
-
-// describe('#sendBatch', () => {
-//   it('should be able to send multiple mail (callback)', async () => {
-//     transport.sendBatch(mails, (err, info) => {
-//       expect(err).to.not.exist();
-//       expect(info).be.an('object');
-
-//       const accepted = info.accepted;
-
-//       expect(accepted[0].To).equal('jane@example.org');
-//       expect(accepted[0].MessageID).be.a('string');
-//       expect(accepted[0].SubmittedAt).be.a('string');
-//       expect(accepted[0].ErrorCode).equal(0);
-//       expect(accepted[0].Message).equal('Test job accepted');
-
-//       expect(accepted[1].To).equal('john@example.org');
-//       expect(accepted[1].MessageID).be.a('string');
-//       expect(accepted[1].SubmittedAt).be.a('string');
-//       expect(accepted[1].ErrorCode).equal(0);
-//       expect(accepted[1].Message).equal('Test job accepted');
-
-//       done();
-//     });
-//   });
-
-//   it('should be able to send multiple mails (promise)', async () => {
-//     transport.sendBatch(mails).then((info) => {
-//       expect(info).be.an('object');
-
-//       const accepted = info.accepted;
-
-//       expect(accepted[0].To).equal('jane@example.org');
-//       expect(accepted[0].MessageID).be.a('string');
-//       expect(accepted[0].SubmittedAt).be.a('string');
-//       expect(accepted[0].ErrorCode).equal(0);
-//       expect(accepted[0].Message).equal('Test job accepted');
-
-//       expect(accepted[1].To).equal('john@example.org');
-//       expect(accepted[1].MessageID).be.a('string');
-//       expect(accepted[1].SubmittedAt).be.a('string');
-//       expect(accepted[1].ErrorCode).equal(0);
-//       expect(accepted[1].Message).equal('Test job accepted');
-
-//       done();
-//     });
-//   });
-// });
-// });
