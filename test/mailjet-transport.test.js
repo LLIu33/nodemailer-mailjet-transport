@@ -420,15 +420,24 @@ describe('MailjetTransport', () => {
   });
 
   describe('#send', () => {
-    it('should be able to send a single mail ()', async () => {
-      const result = await transport.send(mails[0]);
-      const info = JSON.parse(result.response.text);
-      expect(info).be.an('object');
-      const accepted = info.Messages[0].To;
+    it('should be able to send a single mail ()', (callback) => {
+      transport.send(mails[0], (error, sentLetter) => {
+        try {
+          if (error) return callback(error);
 
-      expect(accepted[0].Email).equal('jane@example.org');
-      expect(accepted[0].MessageID).be.a('number');
-      expect(accepted[0].MessageUUID).be.a('string');
+          const info = sentLetter.envelope;
+          expect(info).be.an('object');
+          const accepted = info.Messages[0].To;
+
+          expect(accepted[0].Email).equal('jane@example.org');
+          expect(accepted[0].MessageID).be.a('number');
+          expect(accepted[0].MessageUUID).be.a('string');
+
+          callback();
+        } catch (error) {
+          callback(error);
+        }
+      });
     });
 
     xit('should be able to send a single mail with template', async () => {
@@ -453,18 +462,27 @@ describe('MailjetTransport', () => {
   });
 
   describe('#sendBatch', () => {
-    it('should be able to send multiple mail (callback)', async () => {
-      const result = await transport.sendBatch(mails);
-      const info = JSON.parse(result.response.text);
-      expect(info).be.an('object');
+    it('should be able to send multiple mail (callback)', (callback) => {
+      transport.sendBatch(mails, (error, sentLetter) => {
+        try {
+          if (error) return callback(error);
 
-      expect(info.Messages[0].To[0].Email).equal('jane@example.org');
-      expect(info.Messages[0].To[0].MessageID).be.a('number');
-      expect(info.Messages[0].To[0].MessageUUID).be.a('string');
+          const info = sentLetter.envelope;
+          expect(info).be.an('object');
 
-      expect(info.Messages[1].To[0].Email).equal('john@example.org');
-      expect(info.Messages[1].To[0].MessageID).be.a('number');
-      expect(info.Messages[1].To[0].MessageUUID).be.a('string');
+          expect(info.Messages[0].To[0].Email).equal('jane@example.org');
+          expect(info.Messages[0].To[0].MessageID).be.a('number');
+          expect(info.Messages[0].To[0].MessageUUID).be.a('string');
+
+          expect(info.Messages[1].To[0].Email).equal('john@example.org');
+          expect(info.Messages[1].To[0].MessageID).be.a('number');
+          expect(info.Messages[1].To[0].MessageUUID).be.a('string');
+
+          callback();
+        } catch (error) {
+          callback(error);
+        }
+      });
     });
   });
 });
