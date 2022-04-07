@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "addressparser": "^1.0.1",
-    "async": "^3.2.0",
+    "async": "^3.2.2",
     "bluebird": "^3.7.2",
     "dotenv": "^10.0.0",
     "node-mailjet": "^3.3.4",
