@@ -45,3 +45,5 @@ package-lock.json
 # Env variables
 .env
 
+# Intellij Idea
+.idea
