@@ -45,5 +45,7 @@ package-lock.json
 # Env variables
 .env
 
-# Intellij Idea
+# Editors
 .idea
+.vscode
+
